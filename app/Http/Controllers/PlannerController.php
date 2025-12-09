@@ -7,8 +7,10 @@ use App\Models\Vehicle;
 use App\Models\ScheduleAllocation;
 use App\Enums\ScheduleType;
 use App\Enums\VehicleStatus;
+use App\Services\ProductionScheduler;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Http\Requests\StoreProductionRequest;
 
 class PlannerController extends Controller
 {
@@ -68,95 +70,30 @@ class PlannerController extends Controller
         return back()->with('success', 'Onderhoud ingepland.');
     }
 
-    public function storeProduction(Request $request)
+    public function storeProduction(StoreProductionRequest $request, ProductionScheduler $scheduler)
     {
-        $validated = $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'date' => 'required|date|after_or_equal:today',
-            'start_slot' => 'required|integer|min:1|max:4',
-        ]);
+        $validated = $request->validated();
 
         $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
-        $duration = $vehicle->total_required_time;
 
-        if ($duration <= 0) {
-            return back()->withErrors(['msg' => 'Fout: Tijdsduur is 0.']);
+        try {
+            $scheduler->schedule(
+                $vehicle,
+                $validated['date'],
+                $validated['start_slot']
+            );
+
+            return back()->with('success', "Voertuig succesvol ingepland.");
+
+        } catch (\Exception $e) {
+            return back()->withErrors(['msg' => $e->getMessage()]);
         }
-
-        $capableRobots = Robot::all()->filter(fn($r) => $r->canAssemble($vehicle));
-
-        if ($capableRobots->isEmpty()) {
-            return back()->withErrors(['msg' => 'Geen geschikte robot gevonden.']);
-        }
-
-        $assignedRobot = null;
-        $schedulePlan = [];
-
-        //
-        foreach ($capableRobots as $robot) {
-            $schedulePlan = [];
-            $currentDate = Carbon::parse($validated['date']);
-            $currentSlot = $validated['start_slot'];
-            $blocksNeeded = $duration;
-
-            while ($blocksNeeded > 0) {
-                $collision = ScheduleAllocation::where('robot_id', $robot->id)
-                    ->where('date', $currentDate->format('Y-m-d'))
-                    ->where('slot', $currentSlot)
-                    ->exists();
-
-                if ($collision) {
-                    // If there is overlap, this entire start-time is invalid for this robot.
-                    $schedulePlan = [];
-                    break;
-                }
-
-                $schedulePlan[] = [
-                    'date' => $currentDate->format('Y-m-d'),
-                    'slot' => $currentSlot
-                ];
-
-                $blocksNeeded--;
-                $currentSlot++;
-
-                if ($currentSlot > 4) {
-                    $currentSlot = 1;
-                    $currentDate->addDay();
-
-                }
-            }
-
-            if (count($schedulePlan) === $duration) {
-                $assignedRobot = $robot;
-                break;
-            }
-        }
-
-        if (!$assignedRobot) {
-            return back()->withErrors(['msg' => 'Geen robot beschikbaar voor deze opeenvolgende periode.']);
-        }
-
-        foreach ($schedulePlan as $plan) {
-            ScheduleAllocation::create([
-                'robot_id' => $assignedRobot->id,
-                'vehicle_id' => $vehicle->id,
-                'date' => $plan['date'],
-                'slot' => $plan['slot'],
-                'type' => ScheduleType::PRODUCTION,
-            ]);
-        }
-
-        $vehicle->update(['status' => VehicleStatus::SCHEDULED]);
-
-        return back()->with('success', "Voertuig ingepland over " . count($schedulePlan) . " blokken.");
     }
 
     public function overview()
     {
-// Remove the ->whereIn(...) clause to get everything
         $vehicles = Vehicle::with(['user', 'allocations'])
             ->get()
-            // Sort: Active items (0) first, Completed items (1) last
             ->sortBy(function($v) {
                 return $v->is_completed ? 1 : 0;
             });

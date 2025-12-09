@@ -9,12 +9,12 @@
     @if($errors->any() || session('success'))
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
             @if($errors->any())
-                <div class="bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+                <div class="text-white bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
                     <ul class="list-disc ml-5">@foreach ($errors->all() as $e) <li>{{ $e }}</li> @endforeach</ul>
                 </div>
             @endif
             @if(session('success'))
-                <div class="bg-green-50 border-l-4 border-green-500 p-4 text-green-700">
+                <div class="text-white bg-green-50 border-l-4 border-green-500 p-4 text-green-700">
                     {{ session('success') }}
                 </div>
             @endif

@@ -73,7 +73,7 @@ class VehicleComposerController extends Controller
 
         $vehicle->modules()->attach($moduleIds);
 
-        return redirect()->route('composer.show', $vehicle);
+        return redirect()->route('composer.create');
     }
 
     public function show(Vehicle $vehicle)
