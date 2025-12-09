@@ -21,7 +21,7 @@
 
             @if($optional ?? false)
                 <option value="" {{ old($name) === "" ? 'selected' : '' }}>
-                    🚫 Geen {{ strtolower($title) }}
+                    Geen {{ strtolower($title) }}
                 </option>
             @endif
 

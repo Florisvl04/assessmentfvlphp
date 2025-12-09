@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ModuleCategory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Robot extends Model
 {
+    use HasFactory;
     protected $fillable = ['name'];
 
     public function allocations(): HasMany
@@ -17,13 +19,11 @@ class Robot extends Model
 
     public function canAssemble(Vehicle $vehicle): bool
     {
-        $chassis = $vehicle->modules->where('category', ModuleCategory::CHASSIS)->first();
-        $drive = $vehicle->modules->where('category', ModuleCategory::POWERTRAIN)->first();
+        $chassis = $vehicle->modules->where('category', \App\Enums\ModuleCategory::CHASSIS)->first();
+        $drive = $vehicle->modules->where('category', \App\Enums\ModuleCategory::POWERTRAIN)->first();
 
-        // Safety check: incomplete vehicle
         if (!$chassis || !$drive) return false;
 
-        // Safely retrieve 'vehicle_type' from the specifications array, defaulting to an empty string if the key doesn't exist.
         $type = $chassis->specifications['vehicle_type'] ?? '';
         $fuel = $drive->specifications['fuel_type'] ?? '';
 
@@ -32,7 +32,7 @@ class Robot extends Model
 
             'Robot HydroBoy' => $fuel === 'Waterstof',
 
-            'Robot HeavyD' => in_array($type, ['Vrachtwagen', 'Bus']),
+            'Robot HeavyD' => in_array($type, ['Vrachtwagen', 'Bus', 'Personenauto']),
 
             default => false,
         };

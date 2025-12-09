@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\Module;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Enums\ModuleCategory;
 use App\Enums\VehicleStatus;
@@ -14,9 +16,13 @@ class VehicleComposerController extends Controller
 {
     public function create()
     {
+        // Use short function to get value from enum
         $modules = Module::all()->groupBy(fn($m) => $m->category->value);
 
+        $customers = User::where('role', UserRole::CUSTOMER)->orderBy('name')->get();
+
         return view('composer.create', [
+            'customers'     => $customers,
             'chassisList'   => $modules[ModuleCategory::CHASSIS->value] ?? [],
             'driveList'     => $modules[ModuleCategory::POWERTRAIN->value] ?? [],
             'wheelsList'    => $modules[ModuleCategory::WHEELS->value] ?? [],
@@ -29,6 +35,7 @@ class VehicleComposerController extends Controller
     {
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
+            'customer_id' => 'nullable|exists:users,id',
             'chassis_id'  => 'required|exists:modules,id',
             'drive_id'    => 'required|exists:modules,id',
             'wheels_id'   => 'required|exists:modules,id',
@@ -47,8 +54,11 @@ class VehicleComposerController extends Controller
             ]);
         }
 
+        //Get owner ID, otherwise gets the logged in user
+        $ownerId = $validated['customer_id'] ?? Auth::id();
+
         $vehicle = Vehicle::create([
-            'user_id' => Auth::id(),
+            'user_id' => $ownerId,
             'name'    => $validated['name'],
             'status'  => VehicleStatus::CONCEPT,
         ]);
@@ -68,11 +78,16 @@ class VehicleComposerController extends Controller
 
     public function show(Vehicle $vehicle)
     {
-        if ($vehicle->user_id !== Auth::id() && Auth::user()->role !== \App\Enums\UserRole::ADMIN) {
-            abort(403);
+        $user = Auth::user();
+
+        $isOwner = $vehicle->user_id === $user->id;
+        $isStaff = in_array($user->role, [UserRole::ADMIN, UserRole::MECHANIC, UserRole::PLANNER]);
+
+        if (!$isOwner && !$isStaff) {
+            abort(403, 'U heeft geen toegang tot dit voertuig.');
         }
 
-        return view('composer.show', [
+        return view('customer.show', [
             'vehicle' => $vehicle,
             'modules' => $vehicle->sorted_modules,
             'totalPrice' => $vehicle->total_price

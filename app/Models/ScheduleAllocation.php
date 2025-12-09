@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ScheduleType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ScheduleAllocation extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'robot_id',
         'vehicle_id',

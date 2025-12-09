@@ -77,63 +77,92 @@ class PlannerController extends Controller
         ]);
 
         $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
+        $duration = $vehicle->total_required_time;
 
-        $duration = $vehicle->required_time;
+        if ($duration <= 0) {
+            return back()->withErrors(['msg' => 'Fout: Tijdsduur is 0.']);
+        }
 
-        $capableRobots = Robot::all()->filter(function ($robot) use ($vehicle) {
-            return $robot->canAssemble($vehicle);
-        });
+        $capableRobots = Robot::all()->filter(fn($r) => $r->canAssemble($vehicle));
 
         if ($capableRobots->isEmpty()) {
-            return back()->withErrors(['msg' => 'Er is geen robot geschikt om dit specifieke voertuig te bouwen.']);
+            return back()->withErrors(['msg' => 'Geen geschikte robot gevonden.']);
         }
 
         $assignedRobot = null;
+        $schedulePlan = [];
 
+        //
         foreach ($capableRobots as $robot) {
-            $isFree = true;
+            $schedulePlan = [];
+            $currentDate = Carbon::parse($validated['date']);
+            $currentSlot = $validated['start_slot'];
+            $blocksNeeded = $duration;
 
-            for ($i = 0; $i < $duration; $i++) {
-                $checkSlot = $validated['start_slot'] + $i;
-
-                if ($checkSlot > 4) {
-                    $isFree = false;
-                    break;
-                }
-
+            while ($blocksNeeded > 0) {
                 $collision = ScheduleAllocation::where('robot_id', $robot->id)
-                    ->where('date', $validated['date'])
-                    ->where('slot', $checkSlot)
+                    ->where('date', $currentDate->format('Y-m-d'))
+                    ->where('slot', $currentSlot)
                     ->exists();
 
                 if ($collision) {
-                    $isFree = false;
+                    // If there is overlap, this entire start-time is invalid for this robot.
+                    $schedulePlan = [];
                     break;
+                }
+
+                $schedulePlan[] = [
+                    'date' => $currentDate->format('Y-m-d'),
+                    'slot' => $currentSlot
+                ];
+
+                $blocksNeeded--;
+                $currentSlot++;
+
+                if ($currentSlot > 4) {
+                    $currentSlot = 1;
+                    $currentDate->addDay();
+
                 }
             }
 
-            if ($isFree) {
+            if (count($schedulePlan) === $duration) {
                 $assignedRobot = $robot;
                 break;
             }
         }
 
         if (!$assignedRobot) {
-            return back()->withErrors(['msg' => 'Geen geschikte robot is beschikbaar voor de volledige tijdsduur op dit moment.']);
+            return back()->withErrors(['msg' => 'Geen robot beschikbaar voor deze opeenvolgende periode.']);
         }
 
-        for ($i = 0; $i < $duration; $i++) {
+        foreach ($schedulePlan as $plan) {
             ScheduleAllocation::create([
                 'robot_id' => $assignedRobot->id,
                 'vehicle_id' => $vehicle->id,
-                'date' => $validated['date'],
-                'slot' => $validated['start_slot'] + $i,
+                'date' => $plan['date'],
+                'slot' => $plan['slot'],
                 'type' => ScheduleType::PRODUCTION,
             ]);
         }
 
         $vehicle->update(['status' => VehicleStatus::SCHEDULED]);
 
-        return back()->with('success', "Voertuig ingepland bij robot: {$assignedRobot->name}");
+        return back()->with('success', "Voertuig ingepland over " . count($schedulePlan) . " blokken.");
+    }
+
+    public function overview()
+    {
+// Remove the ->whereIn(...) clause to get everything
+        $vehicles = Vehicle::with(['user', 'allocations'])
+            ->get()
+            // Sort: Active items (0) first, Completed items (1) last
+            ->sortBy(function($v) {
+                return $v->is_completed ? 1 : 0;
+            });
+
+        return view('planner.overview', [
+            'vehicles' => $vehicles
+        ]);
     }
 }

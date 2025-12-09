@@ -30,7 +30,7 @@
 
                     {{-- 1. SCHEDULER --}}
                     <div class="bg-white shadow rounded-lg p-4">
-                        <h3 class="font-bold text-gray-700 border-b pb-2 mb-3">🚗 Inplannen</h3>
+                        <h3 class="font-bold text-gray-700 border-b pb-2 mb-3">Inplannen</h3>
                         <form action="{{ route('planning.schedule') }}" method="POST">
                             @csrf
                             <div class="space-y-3">
@@ -74,7 +74,7 @@
 
                     {{-- 2. MAINTENANCE --}}
                     <div class="bg-white shadow rounded-lg p-4">
-                        <h3 class="font-bold text-gray-700 border-b pb-2 mb-3">🔧 Onderhoud</h3>
+                        <h3 class="font-bold text-gray-700 border-b pb-2 mb-3">Onderhoud</h3>
                         <form action="{{ route('planning.maintenance') }}" method="POST">
                             @csrf
                             <div class="space-y-3">
@@ -132,7 +132,7 @@
                                             <td class="py-3 px-4 text-left font-medium">
                                                 Blok {{ $slot }}
                                                 <span class="text-gray-400 text-xs block">
-                                                        {{ match($slot) { 1=>'08:00', 2=>'10:00', 3=>'12:30', 4=>'14:30'} }}
+                                                        {{ match($slot) { 1=>'08:00', 2=>'10:00', 3=>'12:00', 4=>'14:00'} }}
                                                     </span>
                                             </td>
                                             @foreach($robots as $robot)

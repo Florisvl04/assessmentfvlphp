@@ -29,6 +29,7 @@ Route::middleware(['auth', 'role:monteur'])->group(function () {
 
 Route::middleware(['auth', 'role:planner'])->group(function () {
     Route::get('/planning', [PlannerController::class, 'index'])->name('planning.index');
+    Route::get('/planning/overview', [PlannerController::class, 'overview'])->name('planning.overview');
     Route::post('/planning/maintenance', [PlannerController::class, 'storeMaintenance'])->name('planning.maintenance');
     Route::post('/planning/schedule', [PlannerController::class, 'storeProduction'])->name('planning.schedule');
 });

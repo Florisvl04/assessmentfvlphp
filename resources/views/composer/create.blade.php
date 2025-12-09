@@ -36,7 +36,6 @@
                     </div>
                 @endif
 
-                {{-- Header Section inside Card --}}
                 <div class="px-6 py-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                     <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Project Naam
@@ -49,10 +48,15 @@
                            placeholder="Geef uw voertuig een naam...">
                 </div>
 
-                    {{-- Form Body --}}
                     <div class="p-6 space-y-2">
                         <div class="grid grid-cols-1 gap-6">
 
+                            {{-- 1. CHASSIS --}}
+                            @include('composer.partials.dropdown-field', [
+                                'title' => '1. Klant',
+                                'name' => 'customer_id',
+                                'items' => $customers,
+                            ])
                             {{-- 1. CHASSIS --}}
                             @include('composer.partials.dropdown-field', [
                                 'title' => '1. Chassis',
